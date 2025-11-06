@@ -10,6 +10,9 @@ import ContactSection from "@/components/profile/ContactSection"
 import GitHubSection from "@/components/profile/GitHubSection"
 import LinkedInSection from "@/components/profile/LinkedInSection"
 import ResumeSection from "@/components/profile/ResumeSection"
+import RecruiterCompanySection from "@/components/profile/RecruiterCompanySection"
+import RecruiterContactSection from "@/components/profile/RecruiterContactSection"
+import RecruiterListingsSection from "@/components/profile/RecruiterListingsSection"
 
 export default async function ProfilePage({ params }: { params: { Id: string } }) {
   const loggedInUser = await getCurrentUser()
@@ -18,7 +21,11 @@ export default async function ProfilePage({ params }: { params: { Id: string } }
     where: { id: params.Id },
     include: {
       applicant: true,
-      recruiter: true,
+      recruiter: {
+        include: {
+          company: true,
+        },
+      },
     },
   })
 
@@ -35,7 +42,9 @@ export default async function ProfilePage({ params }: { params: { Id: string } }
 
   const isOwner = loggedInUser?.id === profileUser.id
   const isApplicant = profileUser.role === "APPLICANT"
+  const isRecruiter = profileUser.role === "RECRUITER"
   const applicant = profileUser.applicant
+  const recruiter = profileUser.recruiter
 
   const hasResume = !!applicant?.resumeLink
   const hasGitHub = !!applicant?.githubLink
@@ -78,64 +87,90 @@ export default async function ProfilePage({ params }: { params: { Id: string } }
           hasResume={hasResume}
           hasGitHub={hasGitHub}
           hasLinkedIn={hasLinkedIn}
+          isRecruiter={isRecruiter}
+          recruiter={recruiter}
         />
 
         {/* Main Content */}
         <div className="mt-12">
-          <Tabs defaultValue="projects" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 lg:grid-cols-3 bg-muted/50 border border-border rounded-lg p-1">
-              <TabsTrigger value="projects" className="text-sm font-medium">
-                Projects & Skills
-              </TabsTrigger>
-              <TabsTrigger value="experience" className="text-sm font-medium">
-                Experience & Contact
-              </TabsTrigger>
-              <TabsTrigger value="integrations" className="text-sm font-medium">
-                Integrations
-              </TabsTrigger>
-            </TabsList>
+          {isApplicant && (
+            <Tabs defaultValue="projects" className="w-full">
+              <TabsList className="grid w-full grid-cols-3 lg:grid-cols-3 bg-muted/50 border border-border rounded-lg p-1">
+                <TabsTrigger value="projects" className="text-sm font-medium">
+                  Projects & Skills
+                </TabsTrigger>
+                <TabsTrigger value="experience" className="text-sm font-medium">
+                  Experience & Contact
+                </TabsTrigger>
+                <TabsTrigger value="integrations" className="text-sm font-medium">
+                  Integrations
+                </TabsTrigger>
+              </TabsList>
 
-            {/* Projects & Skills Tab */}
-            <TabsContent value="projects" className="space-y-6 mt-8">
-              <ProjectsSection
-                isApplicant={isApplicant}
-                applicant={applicant}
-                parsedProjects={parsedProjects}
-                profileUser={profileUser}
-                isOwner={isOwner}
-              />
-              <SkillsSection
-                isApplicant={isApplicant}
-                applicant={applicant}
-                profileUser={profileUser}
-                isOwner={isOwner}
-              />
-            </TabsContent>
+              {/* Projects & Skills Tab */}
+              <TabsContent value="projects" className="space-y-6 mt-8">
+                <ProjectsSection
+                  isApplicant={isApplicant}
+                  applicant={applicant}
+                  parsedProjects={parsedProjects}
+                  profileUser={profileUser}
+                  isOwner={isOwner}
+                />
+                <SkillsSection
+                  isApplicant={isApplicant}
+                  applicant={applicant}
+                  profileUser={profileUser}
+                  isOwner={isOwner}
+                />
+              </TabsContent>
 
-            {/* Experience & Contact Tab */}
-            <TabsContent value="experience" className="space-y-6 mt-8">
-              <ExperienceSection isApplicant={isApplicant} applicant={applicant} />
-              <ContactSection
-                profileUser={profileUser}
-                isApplicant={isApplicant}
-                applicant={applicant}
-                isOwner={isOwner}
-              />
-            </TabsContent>
+              {/* Experience & Contact Tab */}
+              <TabsContent value="experience" className="space-y-6 mt-8">
+                <ExperienceSection isApplicant={isApplicant} applicant={applicant} />
+                <ContactSection
+                  profileUser={profileUser}
+                  isApplicant={isApplicant}
+                  applicant={applicant}
+                  isOwner={isOwner}
+                />
+              </TabsContent>
 
-            {/* Integrations Tab */}
-            <TabsContent value="integrations" className="space-y-6 mt-8">
-              <GitHubSection hasGitHub={hasGitHub} githubData={githubData} applicant={applicant} isOwner={isOwner} />
-              <LinkedInSection hasLinkedIn={hasLinkedIn} applicant={applicant} isOwner={isOwner} />
-              <ResumeSection
-                isApplicant={isApplicant}
-                hasResume={hasResume}
-                applicant={applicant}
-                profileUser={profileUser}
-                isOwner={isOwner}
-              />
-            </TabsContent>
-          </Tabs>
+              {/* Integrations Tab */}
+              <TabsContent value="integrations" className="space-y-6 mt-8">
+                <GitHubSection hasGitHub={hasGitHub} githubData={githubData} applicant={applicant} isOwner={isOwner} />
+                <LinkedInSection hasLinkedIn={hasLinkedIn} applicant={applicant} isOwner={isOwner} />
+                <ResumeSection
+                  isApplicant={isApplicant}
+                  hasResume={hasResume}
+                  applicant={applicant}
+                  profileUser={profileUser}
+                  isOwner={isOwner}
+                />
+              </TabsContent>
+            </Tabs>
+          )}
+
+          {isRecruiter && (
+            <Tabs defaultValue="company" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 bg-muted/50 border border-border rounded-lg p-1">
+                <TabsTrigger value="company" className="text-sm font-medium">
+                  Company Info
+                </TabsTrigger>
+                <TabsTrigger value="listings" className="text-sm font-medium">
+                  Active Listings
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="company" className="space-y-6 mt-8">
+                <RecruiterCompanySection recruiter={recruiter} profileUser={profileUser} isOwner={isOwner} />
+                <RecruiterContactSection recruiter={recruiter} profileUser={profileUser} isOwner={isOwner} />
+              </TabsContent>
+
+              <TabsContent value="listings" className="space-y-6 mt-8">
+                <RecruiterListingsSection recruiterId={profileUser.id} isOwner={isOwner} />
+              </TabsContent>
+            </Tabs>
+          )}
         </div>
       </div>
     </div>
