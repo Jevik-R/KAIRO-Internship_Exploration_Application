@@ -22,7 +22,7 @@ export default function RecruiterActivityChart({ userId }: RecruiterActivityChar
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch("/api/dashboard/recruiter-activity-chart")
+        const response = await fetch("/api/auth/dashboard/recruiter-activity-chart")
         if (response.ok) {
           const chartData = await response.json()
           setData(chartData)

@@ -5,7 +5,6 @@ import crypto from "node:crypto";
 import nodemailer from "nodemailer";
 
 export async function POST(req: NextRequest) {
-  console.log("runnig");
   try {
     const { name, email, password, role } = await req.json();
 

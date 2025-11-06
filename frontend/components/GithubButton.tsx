@@ -11,7 +11,6 @@ export default function GithubButton({ userId, currentLink }: { userId: string; 
 
   const handleSave = async () => {
     if (!githubLink.trim()) return
-
     setLoading(true)
     setError("")
     try {

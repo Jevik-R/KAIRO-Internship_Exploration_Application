@@ -5,12 +5,12 @@ import { useState } from "react"
 
 export default function LinkedinButton({ userId, currentLink }: { userId: string; currentLink?: string }) {
   const [isEditing, setIsEditing] = useState(false)
-  const [linkedinLink, setLinkedinLink] = useState(currentLink || "")
+  const [linkedin, setLinkedinLink] = useState(currentLink || "")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
   const handleSave = async () => {
-    if (!linkedinLink.trim()) return
+    if (!linkedin.trim()) return
 
     setLoading(true)
     setError("")
@@ -18,7 +18,7 @@ export default function LinkedinButton({ userId, currentLink }: { userId: string
       const response = await fetch("/api/auth/profile/LinkedInAttach", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, linkedinLink }),
+        body: JSON.stringify({ userId, linkedin }),
       })
 
       if (!response.ok) throw new Error("Failed to update LinkedIn link")
@@ -45,7 +45,7 @@ export default function LinkedinButton({ userId, currentLink }: { userId: string
     <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
       <input
         type="url"
-        value={linkedinLink}
+        value={linkedin}
         onChange={(e) => setLinkedinLink(e.target.value)}
         placeholder="https://linkedin.com/in/username"
         className="w-full px-3 py-2 border rounded-md text-sm"
