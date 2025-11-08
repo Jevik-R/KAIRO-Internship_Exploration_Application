@@ -1,4 +1,8 @@
+"use client"
+
+import { useState } from "react"
 import GithubButton from "@/components/GithubButton"
+import GitHubDeleteButton from "@/components/GitHubDeleteButton"
 
 interface GitHubSectionProps {
   hasGitHub: boolean
@@ -8,11 +12,17 @@ interface GitHubSectionProps {
 }
 
 export default function GitHubSection({ hasGitHub, githubData, applicant, isOwner }: GitHubSectionProps) {
+  const [githubExists, setGithubExists] = useState(hasGitHub)
+
+  const handleDelete = () => {
+    setGithubExists(false)
+  }
+
   return (
     <section className="bg-card border border-border rounded-xl shadow-sm p-6 sm:p-8">
       <h2 className="text-2xl font-bold text-foreground mb-6">GitHub Integration</h2>
 
-      {hasGitHub ? (
+      {githubExists ? (
         <div className="space-y-6">
           {githubData ? (
             <>
@@ -99,13 +109,18 @@ export default function GitHubSection({ hasGitHub, githubData, applicant, isOwne
                   />
                 </svg>
               </a>
+
+              {isOwner && <GitHubDeleteButton userId={applicant.userId} onDelete={handleDelete} />}
             </>
           ) : (
             <p className="text-muted-foreground text-center py-8">Unable to fetch GitHub data.</p>
           )}
         </div>
       ) : (
-        isOwner && <GithubButton />
+        isOwner && <GithubButton
+          userId={applicant.userId}
+          currentLink={applicant.githubLink}
+        />
       )}
     </section>
   )
