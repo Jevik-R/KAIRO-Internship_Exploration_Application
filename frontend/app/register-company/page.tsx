@@ -1,32 +1,57 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function RegisterCompanyPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ name: "", industry: "", website: "", description: "", password: "" });
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
 
-  const submit = async (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+  const [responseMessage, setResponseMessage] = useState<any>(null);
+
+  const [form, setForm] = useState({
+    name: "",
+    industry: "",
+    website: "",
+    password: "",
+    establishedYear: "",
+    companySize: "",
+    location: "",
+    overview: "",
+  });
+
+  // Handle input change
+  const handleChange = (e: any) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  // Submit form
+  const handleSubmit = async (e: any) => {
     e.preventDefault();
     setLoading(true);
-    setResult(null);
+    setResponseMessage(null);
+
     try {
       const res = await fetch("/api/auth/registerCompany", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
+
       const data = await res.json();
-      setResult({ ok: res.ok, data });
-      if (res.ok) {
-        // keep the user on this page and show the loginId; optionally navigate elsewhere
-        // router.push(`/company-login`);
+
+      if (!res.ok) {
+        setResponseMessage({ ok: false, msg: data.error });
+        return;
       }
+
+      setResponseMessage({
+        ok: true,
+        msg: `Registration Successful! Login ID: ${data.loginId}`,
+      });
+
     } catch (err) {
-      setResult({ ok: false, data: String(err) });
+      setResponseMessage({ ok: false, msg: "Network error" });
     } finally {
       setLoading(false);
     }
@@ -36,83 +61,59 @@ export default function RegisterCompanyPage() {
     <main className="max-w-xl mx-auto p-6">
       <h1 className="text-2xl font-semibold mb-4">Register Company</h1>
 
-      <form onSubmit={submit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Company Name</label>
-          <input
-            required
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="w-full border rounded px-3 py-2"
-            placeholder="Acme Corp"
-          />
-        </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Input name="name" label="Company Name" value={form.name} onChange={handleChange} required />
+        <Input name="industry" label="Industry" value={form.industry} onChange={handleChange} required />
+        <Input name="website" label="Website" value={form.website} onChange={handleChange} required />
+        <Input name="establishedYear" label="Established Year" type="number" value={form.establishedYear} onChange={handleChange} required />
+        <Input name="companySize" label="Company Size" value={form.companySize} onChange={handleChange} required />
+        <Input name="location" label="Location" value={form.location} onChange={handleChange} required />
 
         <div>
-          <label className="block text-sm font-medium mb-1">Industry</label>
-          <input
-            value={form.industry}
-            onChange={(e) => setForm({ ...form, industry: e.target.value })}
-            className="w-full border rounded px-3 py-2"
-            placeholder="Software"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Website</label>
-          <input
-            value={form.website}
-            onChange={(e) => setForm({ ...form, website: e.target.value })}
-            className="w-full border rounded px-3 py-2"
-            placeholder="https://example.com"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Description</label>
+          <label className="block text-sm font-medium mb-1">Overview</label>
           <textarea
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            className="w-full border rounded px-3 py-2"
-            placeholder="Short description"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Password (for company login)</label>
-          <input
             required
-            type="password"
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            name="overview"
+            value={form.overview}
+            onChange={handleChange}
             className="w-full border rounded px-3 py-2"
-            placeholder="Choose a password for company login"
+            placeholder="Overview of the company"
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-4 py-2 bg-gray-900 text-white rounded hover:bg-gray-800"
-          >
-            {loading ? "Registering..." : "Register Company"}
-          </button>
-          <button type="button" onClick={() => router.push("/company-login")} className="text-sm text-gray-600">
-            Have an account? Login
-          </button>
-        </div>
+        <Input name="password" type="password" label="Password" value={form.password} onChange={handleChange} required />
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800"
+        >
+          {loading ? "Registering..." : "Register Company"}
+        </button>
       </form>
 
-      {result && (
-        <div className="mt-6 p-4 border rounded">
-          <h3 className="font-semibold">{result.ok ? "Success" : "Error"}</h3>
-          <pre className="text-sm mt-2">{JSON.stringify(result.data, null, 2)}</pre>
-          {result.ok && result.data?.loginId && (
-            <p className="mt-2">Company ID (share with recruiters): <strong>{result.data.loginId}</strong></p>
-          )}
+      {responseMessage && (
+        <div className={`mt-4 p-3 rounded ${responseMessage.ok ? "bg-green-200" : "bg-red-200"}`}>
+          {responseMessage.msg}
         </div>
       )}
     </main>
+  );
+}
+
+// Reusable input component
+function Input({ label, name, value, type = "text", onChange, ...rest }: any) {
+  return (
+    <div>
+      <label className="block text-sm font-medium mb-1">{label}</label>
+      <input
+        name={name}
+        type={type}
+        value={value}
+        onChange={onChange}
+        className="w-full border rounded px-3 py-2"
+        {...rest}
+      />
+    </div>
   );
 }

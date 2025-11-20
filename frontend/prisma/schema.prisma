@@ -9,7 +9,7 @@ datasource db {
 }
 
 model User {
-  id            String                  @id
+  id            String                  @id @default(uuid())
   name          String?
   email         String?                 @unique
   password      String?
@@ -25,7 +25,7 @@ model User {
 }
 
 model Applicant {
-  id                String          @id
+  id                String          @id @default(uuid())
   userId            String          @unique
   linkedInLink      String?
   resumeLink        String?
@@ -39,13 +39,15 @@ model Applicant {
   resumeProjectText String?
   experience        Json?
   phoneNumber       String[]
+  leetcodeLink      String?
+  codeforcesLink    String?
   user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   Project           Project[]
   VerifiedSkill     VerifiedSkill[]
 }
 
 model Recruiter {
-  id           String       @id
+  id           String       @id @default(uuid())
   userId       String       @unique
   companyId    String?
   position     String?
@@ -56,30 +58,33 @@ model Recruiter {
   company      Company?     @relation(fields: [companyId], references: [id])
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
 model Company {
-  id          String       @id @default(uuid())
-  name        String
-  industry    String?
-  website     String?
-  description String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  internships Internship[]
-  recruiters  Recruiter[]
-  companyAuth CompanyAuth?
+  id              String       @id @default(uuid())
+  name            String
+  industry        String?
+  website         String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  companySize     String?
+  establishedYear Int?
+  location        String?
+  overview        String?
+  companyAuth     CompanyAuth?
+  internships     Internship[]
+  recruiters      Recruiter[]
 }
 
 model CompanyAuth {
-  id        String   @id @default(uuid())
-  companyId String   @unique
-  loginId   String   @unique
+  id        String  @id @default(uuid())
+  companyId String  @unique
+  loginId   String  @unique
   password  String
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 }
 
-
 model Internship {
-  id                  String                  @id
+  id                  String                  @id @default(uuid())
   category            InternshipCategory?
   title               String
   slug                String                  @unique
@@ -116,7 +121,7 @@ model Internship {
 }
 
 model InternshipApplication {
-  id                String            @id
+  id                String            @id @default(uuid())
   internshipId      String
   applicantId       String
   coverLetter       String?
@@ -141,7 +146,7 @@ model InternshipApplication {
 }
 
 model Account {
-  id                String  @id
+  id                String  @id @default(uuid())
   userId            String
   type              String
   provider          String
@@ -159,7 +164,7 @@ model Account {
 }
 
 model Session {
-  id           String   @id
+  id           String   @id @default(uuid())
   sessionToken String   @unique
   userId       String
   expires      DateTime
@@ -173,7 +178,7 @@ model VerificationToken {
 }
 
 model Project {
-  id               String    @id
+  id               String    @id @default(uuid())
   title            String
   description      String?
   githubUrl        String?
@@ -185,7 +190,7 @@ model Project {
 }
 
 model VerifiedSkill {
-  id                  String    @id
+  id                  String    @id @default(uuid())
   skillName           String
   skillNameNormalized String
   masteryLevel        Float
