@@ -1,33 +1,63 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, ChangeEvent } from "react";
 import { X, CheckCircle } from "lucide-react";
 
 // Update Internship Modal Component
-export default function UpdateInternshipModal({ id, onClose }) {
+// Update Internship Modal Component
+interface UpdateInternshipModalProps {
+  id: string;
+  onClose: () => void;
+}
+
+interface InternshipForm {
+  title: string;
+  category: string;
+  location: string;
+  Mode: string;
+  Type: string;
+  userType: string;
+  duration: string;
+  openings: number;
+  description: string;
+  responsibilities: string;
+  requirements: string;
+  skills: string[];
+  stipendType: string;
+  stipendAmount: string;
+  perks: string[];
+  applicationDeadline: string;
+  startDate: string;
+  questionsRequired: boolean;
+  customQuestions: string[];
+}
+
+export default function UpdateInternshipModal({ id, onClose }: UpdateInternshipModalProps) {
+
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [postStep, setPostStep] = useState(1);
 
-  const [internshipForm, setInternshipForm] = useState({
-    title: "",
-    category: "",
-    location: "",
-    Mode: "",
-    Type: "REMOTE",
-    userType: "STUDENT",
-    duration: "",
-    openings: 1,
-    description: "",
-    responsibilities: "",
-    requirements: "",
-    skills: [],
-    stipendType: "PAID",
-    stipendAmount: "",
-    perks: [],
-    applicationDeadline: "",
-    startDate: "",
-    questionsRequired: false,
-    customQuestions: [],
-  });
+const [internshipForm, setInternshipForm] = useState<InternshipForm>({
+  title: "",
+  category: "",
+  location: "",
+  Mode: "",
+  Type: "REMOTE",
+  userType: "STUDENT",
+  duration: "",
+  openings: 1,
+  description: "",
+  responsibilities: "",
+  requirements: "",
+  skills: [] as string[],
+  stipendType: "PAID",
+  stipendAmount: "",
+  perks: [] as string[],
+  applicationDeadline: "",
+  startDate: "",
+  questionsRequired: false,
+  customQuestions: [] as string[],
+});
+
 
   // Fetch Internship Data
   useEffect(() => {
@@ -59,7 +89,7 @@ export default function UpdateInternshipModal({ id, onClose }) {
           perks: data.perks || [],
           applicationDeadline: data.applicationDeadline || "",
           startDate: data.startDate || "",
-          questionsRequired: data.question?.length > 0,
+            questionsRequired: (data.question && data.question.length > 0) || false,
           customQuestions: data.question || [],
         });
       } catch (e) {
@@ -122,7 +152,7 @@ export default function UpdateInternshipModal({ id, onClose }) {
     }
   };
 
-  const removeSkill = (idx) => {
+  const removeSkill = (idx:number) => {
     setInternshipForm({ ...internshipForm, skills: internshipForm.skills.filter((_, i) => i !== idx) });
   };
 
@@ -133,7 +163,7 @@ export default function UpdateInternshipModal({ id, onClose }) {
     }
   };
 
-  const removePerk = (idx) => {
+  const removePerk = (idx:number) => {
     setInternshipForm({ ...internshipForm, perks: internshipForm.perks.filter((_, i) => i !== idx) });
   };
 
@@ -144,7 +174,7 @@ export default function UpdateInternshipModal({ id, onClose }) {
     }
   };
 
-  const removeQuestion = (idx) => {
+  const removeQuestion = (idx:number) => {
     setInternshipForm({
       ...internshipForm,
       customQuestions: internshipForm.customQuestions.filter((_, i) => i !== idx),
@@ -189,7 +219,8 @@ export default function UpdateInternshipModal({ id, onClose }) {
     return <div className="p-6 text-center">Loading...</div>;
 
   // Helper: Placeholders from current form values
-  const ph = (key, defaultVal = "") => internshipForm[key] || defaultVal;
+ const ph = (key: keyof InternshipForm, defaultVal = ""): string =>
+  String(internshipForm[key] ?? defaultVal);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -366,7 +397,7 @@ export default function UpdateInternshipModal({ id, onClose }) {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Internship Description *</label>
                 <textarea
-                  rows="4"
+                  rows={4}
                   value={internshipForm.description}
                   onChange={(e) =>
                     setInternshipForm({ ...internshipForm, description: e.target.value })
@@ -378,7 +409,7 @@ export default function UpdateInternshipModal({ id, onClose }) {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Key Responsibilities *</label>
                 <textarea
-                  rows="4"
+                  rows={4}
                   value={internshipForm.responsibilities}
                   onChange={(e) =>
                     setInternshipForm({ ...internshipForm, responsibilities: e.target.value })
@@ -390,7 +421,7 @@ export default function UpdateInternshipModal({ id, onClose }) {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Requirements *</label>
                 <textarea
-                  rows="4"
+                  rows={4}
                   value={internshipForm.requirements}
                   onChange={(e) =>
                     setInternshipForm({ ...internshipForm, requirements: e.target.value })

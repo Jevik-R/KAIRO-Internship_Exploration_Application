@@ -19,7 +19,7 @@ import { Briefcase, LogOut } from "lucide-react"
 import Link from "next/link"
 import crypto from "crypto"
 import GoBackButton from "@/components/GoBackButton"
-import logoImage from "@/components/Kairo_logo.jpg";
+const logoImage = { src: "/Kairo_logo.jpg" };
 
 export default async function ProfilePage({ params }: { params: { Id: string } }) {
   const loggedInUser = await getCurrentUser()
@@ -252,5 +252,5 @@ export default async function ProfilePage({ params }: { params: { Id: string } }
     )
   }
 
-  return <RecruiterDashboard />
+  return <RecruiterDashboard id={profileUser.id} />
 }
