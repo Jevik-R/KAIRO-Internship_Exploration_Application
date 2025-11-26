@@ -408,7 +408,6 @@ const LandingPage: React.FC = () => {
               <li><Link href="/signup" className="hover:text-white">Sign Up</Link></li>
               {/* Added Register Company to Footer */}
               <li><Link href="/register-company" className="hover:text-white font-medium text-blue-400">Register Company</Link></li>
-              <li><Link href="/contact" className="hover:text-white">Contact</Link></li>
             </ul>
           </div>
 
