@@ -287,7 +287,7 @@ const Registration: React.FC = () => {
               <Label htmlFor="terms" className="text-sm text-muted-foreground">
                 I agree to the{" "}
                 <Link
-                  href="/Terms&Services"
+                  href="/terms_and_conditions"
                   className="text-primary hover:underline font-medium"
                 >
                   Terms and Conditions
