@@ -47,7 +47,7 @@ const LandingPage: React.FC = () => {
 
         {/* Heading */}
         <h1 className="text-4xl md:text-5xl font-extrabold text-gray-800 leading-tight animate-fadeInUp">
-          Welcome to <span className="text-gray-900">Kairo</span>
+          Welcome to <span className="text-gray-600">Kairo</span>
         </h1>
 
         <p className="text-gray-600 text-base md:text-lg max-w-2xl mx-auto leading-relaxed animate-fadeInUp">
@@ -56,36 +56,38 @@ const LandingPage: React.FC = () => {
 
         {/* Buttons Section */}
         <div className="flex flex-col items-center justify-center mt-8 animate-fadeInUp space-y-4">
-          
-          {/* Primary Actions (Sign In / Sign Up) */}
-          <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
+
+          {/* Sign In + Sign Up (row) */}
+          <div className="flex flex-row gap-4 justify-center">
             <Link href="/signin">
-              <Button className="px-8 py-5 text-lg shadow-md hover:scale-105 transition-all duration-300 w-full sm:w-auto">
+              <Button className="cursor-pointer px-8 py-5 text-lg shadow-md hover:bg-slate-800 hover:scale-105 transition-all duration-300">
                 Sign In
               </Button>
             </Link>
+
             <Link href="/signup">
               <Button
                 variant="outline"
-                className="px-8 py-5 text-lg border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white hover:scale-105 transition-all duration-300 w-full sm:w-auto"
+                className="cursor-pointer px-8 py-5 text-lg border-gray-900 text-gray-900 hover:bg-slate-700 hover:text-white hover:scale-105 transition-all duration-300"
               >
                 Sign Up
               </Button>
             </Link>
           </div>
 
-          {/* --- NEW: Register Company CTA --- */}
-          <div className="pt-2">
+          {/* Register Company (centered perfectly) */}
+          <div className="flex flex-col items-center">
             <Link href="/register-company">
-              <Button 
-                className="bg-slate-800 text-white px-8 py-5 text-lg shadow-lg hover:bg-slate-700 hover:scale-105 transition-all duration-300 flex items-center gap-2 w-full sm:w-auto"
+              <Button
+                className="cursor-pointer bg-gray-600 text-white px-8 py-5 text-lg shadow-lg hover:bg-slate-700 hover:scale-105 transition-all duration-300 flex items-center gap-2"
               >
                 <Building2 className="w-5 h-5" />
                 Register Company
               </Button>
             </Link>
-            <p className="text-xs text-gray-500 mt-2">
-                Hiring? Create a recruiter account instantly.
+
+            <p className="text-xs text-gray-500 mt-2 text-center">
+              Hiring? Create a recruiter account instantly.
             </p>
           </div>
 
@@ -98,7 +100,7 @@ const LandingPage: React.FC = () => {
           {
             icon: <Users className="w-10 h-10 text-gray-900 mb-3" />,
             title: "For Applicants",
-            text: "Build your professional profile and get matched with recruiters who value your skills.",
+            text: "Build your professional profile and get matched with recruiters.",
           },
           {
             icon: <Briefcase className="w-10 h-10 text-gray-900 mb-3" />,
@@ -107,22 +109,38 @@ const LandingPage: React.FC = () => {
           },
           {
             icon: <ArrowRight className="w-10 h-10 text-gray-900 mb-3" />,
-            title: "Get Started",
+            title: "Sign Up to Get Started",
             text: "Join Kairo today and experience the next generation of hiring and career growth.",
+            link: "/signup", // only last box has link
           },
-        ].map((feature, index) => (
-          <Card
-            key={index}
-            className="border border-gray-200 shadow-md hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 rounded-2xl bg-white/80 backdrop-blur-sm animate-fadeInUp"
-            style={{ animationDelay: `${index * 150}ms` }}
-          >
-            <CardContent className="p-8 flex flex-col items-center text-center space-y-3">
-              <div className="animate-fadeIn">{feature.icon}</div>
-              <h3 className="text-lg font-semibold text-gray-900">{feature.title}</h3>
-              <p className="text-sm text-gray-600 leading-relaxed">{feature.text}</p>
-            </CardContent>
-          </Card>
-        ))}
+        ].map((feature, index) => {
+
+          const card = (
+            <Card
+              className={`border border-gray-200 shadow-md hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 rounded-2xl bg-white/80 backdrop-blur-sm animate-fadeInUp 
+              ${feature.link ? "cursor-pointer" : ""}`}
+              style={{ animationDelay: `${index * 150}ms` }}
+            >
+              <CardContent className="p-8 flex flex-col items-center text-center space-y-3">
+                <div className="animate-fadeIn">{feature.icon}</div>
+                <h3 className="text-lg font-semibold text-gray-900">{feature.title}</h3>
+                <p className="text-sm text-gray-600 leading-relaxed">{feature.text}</p>
+              </CardContent>
+            </Card>
+          );
+
+          // If the box has a link → wrap it
+          if (feature.link) {
+            return (
+              <Link href={feature.link} key={index} className="block">
+                {card}
+              </Link>
+            );
+          }
+
+          // Otherwise return normal box
+          return <div key={index}>{card}</div>;
+        })}
       </div>
 
       {/* Stats Section */}
@@ -408,7 +426,6 @@ const LandingPage: React.FC = () => {
               <li><Link href="/signup" className="hover:text-white">Sign Up</Link></li>
               {/* Added Register Company to Footer */}
               <li><Link href="/register-company" className="hover:text-white font-medium text-blue-400">Register Company</Link></li>
-              <li><Link href="/contact" className="hover:text-white">Contact</Link></li>
             </ul>
           </div>
 
