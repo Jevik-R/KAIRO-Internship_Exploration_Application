@@ -1,8 +1,8 @@
 import json
-import dspy
+import re
 from fastapi import APIRouter, HTTPException
 from fastapi.concurrency import run_in_threadpool
-import re # Import the regular expression module
+from openai import AsyncOpenAI  # Standard library for OpenRouter/OpenAI
 
 from api.config.config import OPEN_ROUTER_API_KEY
 from api.models.resume_parser_models import ResumeUrlRequest
@@ -11,124 +11,117 @@ from api.utils.pdf_utils import load_and_extract
 if not OPEN_ROUTER_API_KEY:
     raise EnvironmentError("OPEN_ROUTER_API_KEY not found")
 
+# Initialize the Async Client for OpenRouter
+client = AsyncOpenAI(
+    api_key=OPEN_ROUTER_API_KEY,
+    base_url="https://openrouter.ai/api/v1",
+)
+
 router = APIRouter()
-
-# ----------------------------------------------------------
-# DSPy Signature for AI Module
-# ----------------------------------------------------------
-class ResumeParser(dspy.Module):
-    def __init__(self):
-        super().__init__()
-        self.predict = dspy.Predict("prompt -> output_json")
-
-    def forward(self, raw_text: str):
-        schema = {
-            "name": "string or null",
-            "gender": "string or null",
-            "source": "string or null",
-            "appliedFor": "string or null",
-            "appliedDate": "string or null",
-            "status": "string or null",
-            "email": "string or null",
-            "phone": "string or null",
-            "college": "string or null",
-            "course": "string or null",
-            "year": "string or null",
-            "cgpa": "string or null",
-            "skills": ["list", "of", "strings"],
-            "experience": "string or null",
-            "resumeUrl": "string or null"
-        }
-
-        # IMPORTANT: Reinforce the single-output instruction in the prompt
-        prompt = f"""
-        You are an expert resume parsing API. 
-        Analyze the following resume text and extract the information into a single, raw JSON object. 
-        
-        Adhere strictly to this JSON schema: {json.dumps(schema)} 
-        
-        Rules: 
-        - Your output MUST be ONLY the raw JSON object, starting with '{{' and ending with '}}'.
-        - Do NOT include markdown code blocks, preambles, or explanations.
-        - If a field is missing, return null (for strings) or [] (for lists). 
-        - Extract phone numbers, email, education, skills, gender (if deducible), and experience.
-        - appliedFor = The job role mentioned in the resume.
-        - appliedDate = null unless a date is actually found.
-        - source = "Company Website" unless otherwise stated.
-        - resumeUrl = Leave as null (backend will fill it).
-        
-        Resume Text:
-        {raw_text}
-        """
-
-        out = self.predict(prompt=prompt)
-        return out.output_json
-
-
-ai_model = ResumeParser()
-
-# ----------------------------------------------------------
-# Endpoint
-# ----------------------------------------------------------
 
 @router.post("/parse-resume")
 async def parse_resume(req: ResumeUrlRequest):
     # ---------------------------
     # 1. Extract raw text + links
     # ---------------------------
+    # Run heavy PDF extraction in a separate thread to avoid blocking the event loop
     result = await run_in_threadpool(load_and_extract, req.url)
 
     raw_text = result["raw_text"]
     links = result["links"]
 
-    # configuration of DSPy + OpenRouter
-    qwen_lm=dspy.LM(
-        api_key=OPEN_ROUTER_API_KEY,
-        model="openrouter/qwen/qwen3-14b:free",
-        api_base="https://openrouter.ai/api/v1"
-    )
-    dspy.configure(lm=qwen_lm)
+    # ---------------------------
+    # 2. Prepare Prompts
+    # ---------------------------
+    schema = {
+        "name": "string or null",
+        "gender": "MALE | FEMALE | OTHER", 
+        "email": "string or null",
+        "phone": "string or null",
+        "college": "string or null",
+        "course": "string or null",
+        "year": "string or null",
+        "cgpa": "string or null",
+        "skills": ["list", "of", "strings"],
+        "experience": "string (summary of work history) or null",
+        "source": "string or null",
+        "appliedFor": "string or null",
+        "appliedDate": "string or null",
+        "status": "string or null",
+        "linkedin": "string or null",
+        "github": "string or null",
+        "portfolio": "string or null",
+        "resumeUrl": "string or null"
+    }
+
+    system_prompt = f"""
+    You are an expert resume parsing API. 
+    Analyze the resume text and extracted links provided by the user.
+    Extract the information into a single, valid JSON object following this schema exactly:
+    {json.dumps(schema)}
+
+    Rules: 
+    - Your output MUST be ONLY the raw JSON object, starting with '{{' and ending with '}}'.
+    - Do NOT include markdown code blocks (```json), preambles, or explanations.
+    - If a field is missing, return null (for strings) or [] (for lists). 
+    - Deduce gender if possible, otherwise null.
+    - Check the "EXTRACTED LINKS LIST" to fill linkedin, github, and portfolio fields.
+    """
+
+    user_content = f"""
+    EXTRACTED LINKS LIST:
+    {json.dumps(links)}
+
+    RESUME TEXT:
+    {raw_text}
+    """
 
     # ---------------------------
-    # 2. AI parses based on raw text
+    # 3. Call AI (OpenRouter)
     # ---------------------------
     try:
-        with dspy.context(lm=qwen_lm):
-            # Step 1: Get the raw, potentially messy output from the LLM
-            llm_raw_output = ai_model(raw_text=raw_text)
-            
-            # Step 2: Use regex to find and extract the valid JSON object
-            # This looks for the content between the first '{' and the last '}'
-            # This is the most robust way to handle LLM preamble/postamble text.
-            match = re.search(r'\{.*\}', llm_raw_output, re.DOTALL)
-            
-            if match:
-                json_str = match.group(0)
-            else:
-                # If regex fails, assume the whole string is the JSON (less safe)
-                json_str = llm_raw_output.strip()
+        response = await client.chat.completions.create(
+            # UPDATED: Use a valid model ID. "qwen3" does not exist yet.
+            # "qwen/qwen-2.5-coder-32b-instruct:free" is a currently valid free model.
+            model="meta-llama/llama-3.2-3b-instruct:free",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_content}
+            ],
+            temperature=0.1, # Keep strictly factual
+            max_tokens=2000
+        )
 
-            # Step 3: Attempt to load the cleaned string
-            data = json.loads(json_str)
+        llm_raw_output = response.choices[0].message.content
+
+        # ---------------------------
+        # 4. Clean and Parse JSON
+        # ---------------------------
+        # Regex to find content between the first { and the last }
+        match = re.search(r'\{.*\}', llm_raw_output, re.DOTALL)
+        
+        if match:
+            json_str = match.group(0)
+        else:
+            json_str = llm_raw_output.strip()
+
+        data = json.loads(json_str)
 
     except json.JSONDecodeError as e:
-        # Catch specific JSON error and log the raw output for better debugging
         print(f"JSON DECODE ERROR: {e}. Raw LLM output was: \n{llm_raw_output}")
         raise HTTPException(
             status_code=500, 
-            detail=f"AI Error: Failed to parse valid JSON from LLM. (Error: {e})"
+            detail=f"AI Error: Failed to parse valid JSON from LLM."
         )
     except Exception as e:
         print("OTHER ERROR:", type(e).__name__, str(e))
         raise HTTPException(500, f"AI Error: {e}")
 
     # ---------------------------
-    # 3. Add additional fields
+    # 5. Add Meta Fields
     # ---------------------------
-    # Set default values and inject backend-controlled fields
     data["resumeUrl"] = req.url
-    data["links"] = links
-    data["rawResumeText"] = raw_text
+    data["rawResumeText"] = raw_text # Optional: Store raw text for debugging
     data.setdefault("source", "Company Website")
     data.setdefault("status", "Applied")
     data.setdefault("appliedDate", None)

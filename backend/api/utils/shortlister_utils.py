@@ -10,7 +10,7 @@ from fastapi.concurrency import run_in_threadpool # REQUIRED for synchronous wor
 from contextlib import AbstractContextManager
 
 # Import data models and DSPy module from the models file
-from app.models.shortlister_models import (
+from api.models.shortlister_models import (
     JobDetails, ApplicantProfile, ApplicantScore, VerifiedSkill, ProjectLevelAssessor
 )
 
