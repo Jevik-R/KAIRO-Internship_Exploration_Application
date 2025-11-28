@@ -1321,8 +1321,8 @@ const filteredInternshipsByStatus = useMemo(() => {
   );
 
   const InternshipsView = () => (
-    <div className="grid grid-cols-2 gap-4">
-      <div className="space-y-4 col-span-1">
+    <div className="flex gap-4">
+      <div className="space-y-4 w-[55%] min-w-[600px]">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-gray-900">
             Manage Internships
@@ -1467,7 +1467,7 @@ const filteredInternshipsByStatus = useMemo(() => {
         </div>
       </div>
 
-      <div className="col-span-1 bg-white border border-gray-200 rounded-lg p-4 h-full overflow-y-auto">
+      <div className="flex-1 bg-white border border-gray-200 rounded-lg p-4 h-full overflow-y-auto min-w-[350px]">
         {selectedInternship ? (
           <>
             <div className="flex items-center justify-between">
