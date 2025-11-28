@@ -1413,7 +1413,7 @@ const filteredInternshipsByStatus = useMemo(() => {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center space-x-1 text-sm text-gray-600">
-                        <DollarSign className="w-3.5 h-3.5" />
+                        ₹
                         <span>{internship.stipend}</span>
                       </div>
                     </td>
