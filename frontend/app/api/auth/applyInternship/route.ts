@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-// POST: Apply to Internship
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -14,15 +13,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Fetch User AND related Applicant profile
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { 
         role: true, 
         gender: true,
-        name: true,      // Check 1
-        email: true,     // Check 2
-        applicant: {     // Relation to check skills
+        name: true,      
+        email: true,     
+        applicant: {     
             select: {
                 skills: true,
                 rawResumeText: true
@@ -38,9 +36,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. VALIDATION CHECKS
     
-    // Check Name
     if (!user.name || !user.name.trim()) {
       return NextResponse.json(
         { error: "Please complete your profile: Name is required before applying." },
@@ -48,7 +44,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check Email
     if (!user.email || !user.email.trim()) {
       return NextResponse.json(
         { error: "Please complete your profile: Email is required before applying." },
@@ -56,8 +51,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check Skills (Located inside user.applicant)
-    // We check if the applicant profile exists AND if the skills array has items
     const hasSkills = user.applicant?.skills && user.applicant.skills.length > 0;
 
     if (!hasSkills) {
@@ -67,7 +60,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Check if Internship exists
     const internship = await prisma.internship.findUnique({
       where: { id: internshipId },
     });
@@ -79,7 +71,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Check for Duplicate Application
     const existingApp = await prisma.internshipApplication.findUnique({
       where: {
         internshipId_applicantId: {
@@ -96,7 +87,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 5. Create Application and Update Count
     const [application] = await prisma.$transaction([
       prisma.internshipApplication.create({
         data: {

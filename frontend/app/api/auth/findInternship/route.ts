@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-// ---------------- GET: Search Internships ----------------
 export async function GET(req: NextRequest) {
   try {
     const params = req.nextUrl.searchParams;
@@ -15,7 +14,6 @@ export async function GET(req: NextRequest) {
     const maxStipend = params.get("maxStipend");
     const skillsParam = params.get("skills");
 
-    // ---- Build filters ----
     const filters: any = {
       isActive: true,
       AND: [],

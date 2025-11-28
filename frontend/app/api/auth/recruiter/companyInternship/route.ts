@@ -13,7 +13,6 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // 1. Find the requesting recruiter
     const currentRecruiter = await prisma.recruiter.findUnique({
       where: { userId: recruiterId },
     });
@@ -25,16 +24,13 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // 2. Find all recruiters belonging to that company
     const colleagues = await prisma.recruiter.findMany({
       where: { companyId: currentRecruiter.companyId },
-      select: { id: true }, // Optimization: Only fetch the IDs
+      select: { id: true }, 
     });
 
-    // 3. Create an array of IDs (e.g., [1, 2, 5])
     const recruiterIds = colleagues.map((colleague) => colleague.id);
 
-    // 4. Fetch internships where the recruiterId is IN that list
     const internships = await prisma.internship.findMany({
       where: {
         recruiterId: {
@@ -42,8 +38,6 @@ export async function GET(req: NextRequest) {
         },
       },
       orderBy: { createdAt: "desc" },
-      // Optional: Include relations if you need company details
-      // include: { recruiter: true } 
     });
 
     return NextResponse.json(internships, { status: 200 });

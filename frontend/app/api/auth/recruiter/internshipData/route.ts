@@ -5,7 +5,6 @@ const prisma = new PrismaClient();
 
 export async function GET(req: Request) {
   try {
-    // Optional: get recruiter ID from query or session (for now, assume recruiterId)
     const { searchParams } = new URL(req.url);
     const recruitersId = searchParams.get("recruiterId");
     if (!recruitersId) {
@@ -24,7 +23,6 @@ export async function GET(req: Request) {
     startOfLastWeek.setDate(startOfLastWeek.getDate() - 120);
     const endOfLastWeek = new Date(startOfThisWeek);
 
-    // Helper to compute % change + trend
     const calcTrend = (thisWeek: number, lastWeek: number) => {
       const change = thisWeek - lastWeek;
       const percent = lastWeek ? ((change / lastWeek) * 100).toFixed(1) : "100";
@@ -36,13 +34,9 @@ export async function GET(req: Request) {
       };
     };
 
-    // Active internships
     const activeThisWeek = await prisma.internship.count({
       where: {
         recruiterId,
-        startDate : {
-          lte: new Date()
-        },
         applicationDeadline:{
           gte: new Date()
         },
@@ -65,7 +59,6 @@ export async function GET(req: Request) {
       },
     });
 
-    // Total applicants
     const internships = await prisma.internship.findMany({
       where: { recruiterId },
       select: { id: true },
