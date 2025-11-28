@@ -62,6 +62,9 @@ export async function GET(req: NextRequest) {
     const internships = await prisma.internship.findMany({
       where: filters,
       orderBy: { createdAt: "desc" },
+      include: {
+        company: true,
+      }
     });
 
     if (!internships || internships.length === 0) {

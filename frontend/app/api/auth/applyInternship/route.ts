@@ -1,8 +1,7 @@
-
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-// POST: Apply to Internship (duplicate of /api/auth/findInternship POST logic)
+// POST: Apply to Internship
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -15,18 +14,60 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // 1. Fetch User AND related Applicant profile
     const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { role: true, gender: true }
+      where: { id: userId },
+      select: { 
+        role: true, 
+        gender: true,
+        name: true,      // Check 1
+        email: true,     // Check 2
+        applicant: {     // Relation to check skills
+            select: {
+                skills: true,
+                rawResumeText: true
+            }
+        }
+      }
     });
 
     if (!user) {
-        return NextResponse.json(
-            { error: "Applicant user not found" },
-            { status: 404 }
-        );
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
     }
 
+    // 2. VALIDATION CHECKS
+    
+    // Check Name
+    if (!user.name || !user.name.trim()) {
+      return NextResponse.json(
+        { error: "Please complete your profile: Name is required before applying." },
+        { status: 400 }
+      );
+    }
+
+    // Check Email
+    if (!user.email || !user.email.trim()) {
+      return NextResponse.json(
+        { error: "Please complete your profile: Email is required before applying." },
+        { status: 400 }
+      );
+    }
+
+    // Check Skills (Located inside user.applicant)
+    // We check if the applicant profile exists AND if the skills array has items
+    const hasSkills = user.applicant?.skills && user.applicant.skills.length > 0;
+
+    if (!hasSkills) {
+      return NextResponse.json(
+        { error: "Please add at least one skill to your applicant profile before applying." },
+        { status: 400 }
+      );
+    }
+
+    // 3. Check if Internship exists
     const internship = await prisma.internship.findUnique({
       where: { id: internshipId },
     });
@@ -38,6 +79,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // 4. Check for Duplicate Application
     const existingApp = await prisma.internshipApplication.findUnique({
       where: {
         internshipId_applicantId: {
@@ -54,65 +96,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const application = await prisma.internshipApplication.create({
-      data: {
-        internshipId,
-        applicantId: userId,
-        coverLetter,
-        resumeUrl,
-        gender: user.gender
+    // 5. Create Application and Update Count
+    const [application] = await prisma.$transaction([
+      prisma.internshipApplication.create({
+        data: {
+          internshipId,
+          applicantId: userId,
+          coverLetter,
+          resumeUrl,
+          gender: user.gender,
+          resumeData: user.applicant?.rawResumeText ?? undefined,
+        },
+      }),
+      prisma.internship.update({
+        where: { id: internshipId },
+        data: { applicationsCount: { increment: 1 } },
+      }),
+    ]);
+
+    return NextResponse.json(
+      {
+        message: "Application submitted successfully",
+        application,
       },
-    });
+      { status: 201 }
+    );
 
-    // Call FastAPI resume parser (if available)
-    try {
-      const response = await fetch(
-        `${process.env.RESUME_PARSER_URL}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: resumeUrl }),
-        }
-      );
-
-      const parsedData = await response.json();
-      // Save parsed data into DB column 'resumeData' (modify as per your Prisma schema)
-      await prisma.internshipApplication.update({
-        where: { id: application.id },
-        data: { resumeData: parsedData },
-      });
-
-      // Update internship application count
-      await prisma.internship.update({
-        where: { id: internshipId },
-        data: { applicationsCount: { increment: 1 } },
-      });
-
-      return NextResponse.json(
-        {
-          message: "Application submitted and resume parsed successfully",
-          application,
-          resumeData: parsedData,
-        },
-        { status: 201 }
-      );
-    } catch (err) {
-      // If parser is not available, still return success for application creation
-      console.error("Resume parser error:", err);
-      // Update application count anyway
-      await prisma.internship.update({
-        where: { id: internshipId },
-        data: { applicationsCount: { increment: 1 } },
-      });
-
-      return NextResponse.json(
-        {
-          message: "Application submitted (resume parser failed)",
-          application,
-        },
-        { status: 201 }
-      );
-    }
   } catch (error) {
     console.error("Error applying for internship:", error);
     return NextResponse.json(

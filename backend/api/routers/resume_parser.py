@@ -83,7 +83,7 @@ async def parse_resume(req: ResumeUrlRequest):
         response = await client.chat.completions.create(
             # UPDATED: Use a valid model ID. "qwen3" does not exist yet.
             # "qwen/qwen-2.5-coder-32b-instruct:free" is a currently valid free model.
-            model="meta-llama/llama-3.2-3b-instruct:free",
+            model="qwen/qwen3-4b:free",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_content}

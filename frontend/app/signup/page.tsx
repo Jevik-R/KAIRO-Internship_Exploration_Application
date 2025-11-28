@@ -23,6 +23,11 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
+// --- Regex Patterns ---
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
 interface RegistrationFormData {
   name: string;
   email: string;
@@ -30,8 +35,18 @@ interface RegistrationFormData {
   confirmPassword: string;
   role: "APPLICANT" | "RECRUITER";
   gender: "MALE" | "FEMALE" | "OTHER";
-  companyId?: string; // Added companyId
+  companyId?: string;
   termsAccepted: boolean;
+}
+
+// Interface for Error State
+interface FormErrors {
+  name?: string;
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
+  companyId?: string;
+  termsAccepted?: string;
 }
 
 const Registration: React.FC = () => {
@@ -44,10 +59,11 @@ const Registration: React.FC = () => {
     confirmPassword: "",
     role: "APPLICANT",
     gender: "MALE",
-    companyId: "", // Initialize companyId
+    companyId: "",
     termsAccepted: false,
   });
 
+  const [errors, setErrors] = useState<FormErrors>({}); // State for errors
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -57,20 +73,73 @@ const Registration: React.FC = () => {
       ...prev,
       [name]: value,
     }));
+    
+    // Clear error for this field when user types
+    if (errors[name as keyof FormErrors]) {
+      setErrors((prev) => ({ ...prev, [name]: undefined }));
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+    let isValid = true;
+
+    // Name Validation
+    if (!formData.name.trim()) {
+      newErrors.name = "Full name is required";
+      isValid = false;
+    } else if (formData.name.trim().length < 2) {
+      newErrors.name = "Name must be at least 2 characters long";
+      isValid = false;
+    }
+
+    // Email Validation
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+      isValid = false;
+    } else if (!EMAIL_REGEX.test(formData.email)) {
+      newErrors.email = "Please enter a valid email address";
+      isValid = false;
+    }
+
+    // Password Validation
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+      isValid = false;
+    } else if (!PASSWORD_REGEX.test(formData.password)) {
+      newErrors.password = "Password must be 8+ chars, include uppercase, lowercase, number, and special char (@$!%*?&)";
+      isValid = false;
+    }
+
+    // Confirm Password Validation
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+      isValid = false;
+    }
+
+    // Recruiter Validation
+    if (formData.role === "RECRUITER" && !formData.companyId?.trim()) {
+      newErrors.companyId = "Company ID is required for recruiters";
+      isValid = false;
+    }
+
+    // Terms Validation
+    if (!formData.termsAccepted) {
+      newErrors.termsAccepted = "You must accept the Terms and Conditions";
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    if (!formData.termsAccepted)
-      return toast.error("Please accept the Terms and Conditions.");
-
-    if (formData.password !== formData.confirmPassword)
-      return toast.error("Passwords do not match.");
-
-    // Validation for recruiter
-    if (formData.role === "RECRUITER" && !formData.companyId) {
-      return toast.error("Company ID is required for recruiters.");
+    // Run validation before submitting
+    if (!validateForm()) {
+      toast.error("Please fix the errors in the form.");
+      return;
     }
 
     try {
@@ -85,7 +154,7 @@ const Registration: React.FC = () => {
           password: formData.password,
           role: formData.role,
           gender: formData.gender,
-          companyId: formData.role === "RECRUITER" ? formData.companyId : undefined, // Send ID only if recruiter
+          companyId: formData.role === "RECRUITER" ? formData.companyId : undefined,
         }),
       });
 
@@ -94,7 +163,6 @@ const Registration: React.FC = () => {
       if (!res.ok) throw new Error(data.message || "Signup failed.");
 
       toast.success("Signup successful! Please verify your email before logging in.");
-
       router.push("/verify-email");
 
     } catch (err: any) {
@@ -117,38 +185,39 @@ const Registration: React.FC = () => {
 
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            
             {/* Name */}
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name *</Label>
+              <Label htmlFor="name" className={errors.name ? "text-destructive" : ""}>Full Name *</Label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   id="name"
                   type="text"
                   placeholder="Enter your full name"
-                  required
                   value={formData.name}
                   onChange={(e) => handleInputChange("name", e.target.value)}
-                  className="pl-10"
+                  className={`pl-10 ${errors.name ? "border-destructive focus-visible:ring-destructive" : ""}`}
                 />
               </div>
+              {errors.name && <p className="text-xs text-destructive mt-1">{errors.name}</p>}
             </div>
 
             {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="email">Email Address *</Label>
+              <Label htmlFor="email" className={errors.email ? "text-destructive" : ""}>Email Address *</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   id="email"
                   type="email"
                   placeholder="Enter your email"
-                  required
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
-                  className="pl-10"
+                  className={`pl-10 ${errors.email ? "border-destructive focus-visible:ring-destructive" : ""}`}
                 />
               </div>
+              {errors.email && <p className="text-xs text-destructive mt-1">{errors.email}</p>}
             </div>
 
             {/* Gender */}
@@ -190,38 +259,37 @@ const Registration: React.FC = () => {
               </Select>
             </div>
 
-            {/* Company ID - Conditionally Rendered */}
+            {/* Company ID */}
             {formData.role === "RECRUITER" && (
               <div className="space-y-2 slide-in-from-top-2 animate-in duration-300">
-                <Label htmlFor="companyId">Company ID *</Label>
+                <Label htmlFor="companyId" className={errors.companyId ? "text-destructive" : ""}>Company ID *</Label>
                 <div className="relative">
                   <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     id="companyId"
                     type="text"
                     placeholder="Enter your Company ID"
-                    required={formData.role === "RECRUITER"}
                     value={formData.companyId}
                     onChange={(e) => handleInputChange("companyId", e.target.value)}
-                    className="pl-10"
+                    className={`pl-10 ${errors.companyId ? "border-destructive focus-visible:ring-destructive" : ""}`}
                   />
                 </div>
+                {errors.companyId && <p className="text-xs text-destructive mt-1">{errors.companyId}</p>}
               </div>
             )}
 
             {/* Password */}
             <div className="space-y-2">
-              <Label htmlFor="password">Password *</Label>
+              <Label htmlFor="password" className={errors.password ? "text-destructive" : ""}>Password *</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="Create a strong password"
-                  required
                   value={formData.password}
                   onChange={(e) => handleInputChange("password", e.target.value)}
-                  className="pl-10 pr-10"
+                  className={`pl-10 pr-10 ${errors.password ? "border-destructive focus-visible:ring-destructive" : ""}`}
                 />
                 <Button
                   type="button"
@@ -237,23 +305,28 @@ const Registration: React.FC = () => {
                   )}
                 </Button>
               </div>
+              {/* Display specific password error */}
+              {errors.password && <p className="text-xs text-destructive mt-1">{errors.password}</p>}
+              {/* Display password requirements hint if no error yet */}
+              {!errors.password && (
+                 <p className="text-[10px] text-muted-foreground mt-1">
+                   Min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char.
+                 </p>
+              )}
             </div>
 
             {/* Confirm Password */}
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password *</Label>
+              <Label htmlFor="confirmPassword" className={errors.confirmPassword ? "text-destructive" : ""}>Confirm Password *</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   id="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
                   placeholder="Confirm your password"
-                  required
                   value={formData.confirmPassword}
-                  onChange={(e) =>
-                    handleInputChange("confirmPassword", e.target.value)
-                  }
-                  className="pl-10 pr-10"
+                  onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+                  className={`pl-10 pr-10 ${errors.confirmPassword ? "border-destructive focus-visible:ring-destructive" : ""}`}
                 />
                 <Button
                   type="button"
@@ -269,30 +342,31 @@ const Registration: React.FC = () => {
                   )}
                 </Button>
               </div>
+              {errors.confirmPassword && <p className="text-xs text-destructive mt-1">{errors.confirmPassword}</p>}
             </div>
 
             {/* Terms Checkbox */}
-            <div className="flex items-center space-x-2">
-              <input
-                title="terms"
-                id="terms"
-                type="checkbox"
-                checked={formData.termsAccepted}
-                onChange={(e) =>
-                  handleInputChange("termsAccepted", e.target.checked)
-                }
-                className="rounded border-gray-300 accent-primary"
-                required
-              />
-              <Label htmlFor="terms" className="text-sm text-muted-foreground">
-                I agree to the{" "}
-                <Link
-                  href="/terms_and_conditions"
-                  className="text-primary hover:underline font-medium"
-                >
-                  Terms and Conditions
-                </Link>
-              </Label>
+            <div>
+              <div className="flex items-center space-x-2">
+                <input
+                  title="terms"
+                  id="terms"
+                  type="checkbox"
+                  checked={formData.termsAccepted}
+                  onChange={(e) => handleInputChange("termsAccepted", e.target.checked)}
+                  className="rounded border-gray-300 accent-primary"
+                />
+                <Label htmlFor="terms" className={`text-sm ${errors.termsAccepted ? "text-destructive" : "text-muted-foreground"}`}>
+                  I agree to the{" "}
+                  <Link
+                    href="/terms_and_conditions"
+                    className="text-primary hover:underline font-medium"
+                  >
+                    Terms and Conditions
+                  </Link>
+                </Label>
+              </div>
+              {errors.termsAccepted && <p className="text-xs text-destructive mt-1">{errors.termsAccepted}</p>}
             </div>
 
             {/* Submit button */}

@@ -4,23 +4,19 @@ import prisma from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { v4 as uuidv4 } from 'uuid';
 
-// --- Configuration ---
-// The URL for your FastAPI resume parsing service (e.g., http://localhost:8000)
 const RESUME_PARSER_URL = process.env.RESUME_PARSER_URL;
 
 export async function POST(req: NextRequest) {
   try {
-    // 0. Configuration Check and URL Construction
+    // 0. Configuration Check
     if (!RESUME_PARSER_URL) {
-        console.error("FATAL: RESUME_PARSER_URL environment variable is not set.");
-        return NextResponse.json({ 
-            error: "Server configuration error: Resume parser URL base missing." 
-        }, { status: 500 });
+      console.error("FATAL: RESUME_PARSER_URL environment variable is not set.");
+      return NextResponse.json({ 
+        error: "Server configuration error: Resume parser URL base missing." 
+      }, { status: 500 });
     }
     
-    const fullParserUrl = RESUME_PARSER_URL
-
-    // 1. Authentication and Authorization
+    // 1. Authentication
     const sessionToken = cookies().get("sessionToken")?.value;
     if (!sessionToken) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -37,7 +33,9 @@ export async function POST(req: NextRequest) {
         { status: 403 }
       );
     }
+    
     const applicantId = session.user.applicant.id;
+    const userId = session.user.id; // Needed to update the User model
 
     // 2. Parse Request Body
     const body = await req.json();
@@ -47,18 +45,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing or invalid file data" }, { status: 400 });
     }
 
-    // Basic Base64 Validation
-    try {
-      const buffer = Buffer.from(fileBase64, 'base64');
-      if (buffer.length === 0) {
-        return NextResponse.json({ error: "Empty file data" }, { status: 400 });
-      }
-    } catch (error) {
-      console.error('Invalid base64 data:', error);
-      return NextResponse.json({ error: "Invalid file data format" }, { status: 400 });
-    }
-
-    // 3. Upload File to CDN (Uploadcare)
+    // 3. Upload File to Uploadcare
     const client = new UploadClient({
       publicKey: process.env.UPLOADCARE_PUBLIC_KEY!,
     });
@@ -72,103 +59,96 @@ export async function POST(req: NextRequest) {
       store: true,
     });
 
-    // Construct the CDN URL
-    // FIX APPLIED: uploadedFile.cdnUrl already includes 'https://', so we use it directly
-    // to prevent the double protocol seen in the error logs (https://https://...).
-    const cdnUrl = `https://720nna3ivj.ucarecd.net/${uploadedFile.uuid}/${fileName || "file.pdf"}`; // Clean URL by removing query parameters
+    const cdnUrl = `https://720nna3ivj.ucarecd.net/${uploadedFile.uuid}/${fileName || "file.pdf"}`;
 
     // 4. Call FastAPI Resume Parser
-    console.log(`INFO: Calling external resume parser at ${fullParserUrl} with URL: ${cdnUrl}`);
+    console.log(`INFO: Calling external resume parser...`);
     
-    let parsedResumeData: any;
+    let parsedResumeData: any = null;
     try {
-      const parserResponse = await fetch(fullParserUrl, {
+      const parserResponse = await fetch(RESUME_PARSER_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        // The FastAPI endpoint expects a JSON body with the URL, based on the `ResumeUrlRequest` model
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: cdnUrl }),
       });
 
-      if (!parserResponse.ok) {
-        // Log the error response from FastAPI for debugging
-        const errorText = await parserResponse.text();
-        console.error(`ERROR: FastAPI parser returned status ${parserResponse.status}. Body: ${errorText}`);
-        // Re-throw the error to be caught by the outer catch block
-        throw new Error(`Parser failed with status ${parserResponse.status}`);
+      if (parserResponse.ok) {
+        parsedResumeData = await parserResponse.json();
+        console.log('INFO: Resume parsing successful.');
+      } else {
+        console.error(`ERROR: Parser returned status ${parserResponse.status}`);
       }
-
-      parsedResumeData = await parserResponse.json();
-      console.log('INFO: Resume parsing successful.');
-
     } catch (error) {
-      console.error('ERROR: Failed to call or process FastAPI response:', error);
-      // We can continue to update the resumeLink even if parsing fails, but log the issue.
-      parsedResumeData = null; 
+      console.error('ERROR: Failed to call parser:', error);
     }
 
-    // 5. Update Applicant's Profile in Prisma/Supabase
-    const updateData: any = { 
+    // 5. Prepare Applicant Update Data
+    // We explicitly define this object to ensure no 'name' field slips in
+    const applicantUpdateData: any = { 
       resumeLink: cdnUrl,
     };
 
     if (parsedResumeData) {
-    // console.log("[Raw parsed data]:", parsedResumeData);
+      // Schema Fix: rawResumeText is Json, so pass object directly
+      applicantUpdateData.rawResumeText = parsedResumeData;
+      
+      applicantUpdateData.phoneNumber = parsedResumeData.phone ? [parsedResumeData.phone] : [];
+      applicantUpdateData.skills = Array.isArray(parsedResumeData.skills) ? parsedResumeData.skills : [];
+      applicantUpdateData.linkedInLink = parsedResumeData.linkedin || null;
+      applicantUpdateData.githubLink = parsedResumeData.github || null;
+      applicantUpdateData.portfolioLink = parsedResumeData.portfolio || null;
 
-    // 1. Basic Fields
-    updateData.rawResumeText = parsedResumeData.rawResumeText || null;
-    
-    // Note: Wrapping phone in array as per your type definition
-    const phonenumber: string[] = parsedResumeData.phone ? [parsedResumeData.phone] : [];
-    updateData.phoneNumber = phonenumber;
-
-    updateData.skills = Array.isArray(parsedResumeData.skills) ? parsedResumeData.skills : [];
-    updateData.linkedInLink = parsedResumeData.linkedin || null;
-    updateData.githubLink = parsedResumeData.github || null;
-    updateData.portfolioLink = parsedResumeData.portfolio || null;
-
-    // 2. Education Mapping
-    // Only add if we actually have college or course data to prevent empty cards
-    if (parsedResumeData.college || parsedResumeData.course) {
-        
+      // Map Education
+      if (parsedResumeData.college || parsedResumeData.course) {
         const newEducationEntry = {
-            // Generate a random ID
-            id: uuidv4(), 
-            
+            id: uuidv4(),
             institution: parsedResumeData.college || "",
             degree: parsedResumeData.course || "",
             year: parsedResumeData.year || "",
             grade: parsedResumeData.cgpa || "",
-            
-            // 'board' is not in your parser output, so we default to empty string
             board: "" 
         };
-
-        // Initialize array if it doesn't exist, then push the new entry
-        updateData.education = updateData.education || [];
-        updateData.education.push(newEducationEntry);
+        
+        // Append to existing education if available
+        const currentEducation = (session.user.applicant.education as any[]) || [];
+        applicantUpdateData.education = [...currentEducation, newEducationEntry];
+      }
     }
-}
 
-    await prisma.applicant.update({
-      where: { id: applicantId },
-      data: updateData,
-    });
+    // 6. Perform Updates (Parallel)
+    const promises = [];
 
-    // 6. Return Success Response
+    // Update A: Applicant Profile (resume link, skills, etc.)
+    promises.push(
+      prisma.applicant.update({
+        where: { id: applicantId },
+        data: applicantUpdateData,
+      })
+    );
+
+    // Update B: User Name (Only if found in resume and strictly on User model)
+    if (parsedResumeData?.name) {
+      // Optional: Only update if the user doesn't have a name yet?
+      // For now, we overwrite based on the resume.
+      promises.push(
+        prisma.user.update({
+          where: { id: userId },
+          data: { name: parsedResumeData.name },
+        })
+      );
+    }
+
+    await Promise.all(promises);
+
+    // 7. Return Success
     return NextResponse.json({ 
-      message: "File uploaded and parsing completed successfully", 
+      message: "File uploaded and parsed successfully", 
       fileUrl: cdnUrl,
-      parsedData: parsedResumeData ? { 
-        // Report back on the data fields we successfully mapped
-        rawResumeTextLength: updateData.rawResumeText?.length || 0, 
-        skillsCount: updateData.skills.length 
-      } : "Parsing failed or returned no data."
+      parsedData: parsedResumeData
     });
 
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: "An unexpected error occurred during the upload process" }, { status: 500 });
+    console.error("Upload error:", error);
+    return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 });
   }
 }
