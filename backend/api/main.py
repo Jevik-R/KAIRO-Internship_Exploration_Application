@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.routers.resume_parser import router as resume_router
 # from app.routers.skill_verifier import router as verifier_router
-from api.routers.ai_shortlister import router as shortlist_router
+# from api.routers.ai_shortlister import router as shortlist_router
 # from app.routers.ai_shortlister import router as shortlist_router
 # from app.routers.ai_shortlister import load_model
 
@@ -26,11 +26,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(
-    shortlist_router, 
-    prefix="/api/v1", 
-    tags=["AI Shortlister"]
-)
+# app.include_router(
+#     shortlist_router, 
+#     prefix="/api/v1", 
+#     tags=["AI Shortlister"]
+# )
 
 app.include_router(
     resume_router, 
