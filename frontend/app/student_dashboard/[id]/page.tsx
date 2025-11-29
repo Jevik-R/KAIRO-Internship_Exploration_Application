@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { toast } from "sonner";
 
 import logoImage from "@/components/Kairo_logo.jpg";
 import HeroImage from "@/public/hero-student.jpg";
@@ -32,7 +31,9 @@ import {
 } from "@/components/ui/dialog";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import FileUpload from "@/components/FileUpload";
+
+import InternshipCard from "@/components/InternshipCard";
+import { ApplyInternshipDialog } from "@/components/ApplyInternshipDialog";
 
 interface StudentDashboardProps {
   params: { id: string };
@@ -48,8 +49,6 @@ const StudentDashboard = ({ params }: StudentDashboardProps) => {
   const [message, setMessage] = useState<{ type: string; text: string } | null>(
     null
   );
-  const [fetchingResume, setFetchingResume] = useState(false);
-  const [isUsingProfileResume, setIsUsingProfileResume] = useState(false);
 
   // Filters
   const [search, setSearch] = useState(searchParams.get("search") || "");
@@ -68,8 +67,6 @@ const StudentDashboard = ({ params }: StudentDashboardProps) => {
   // Apply modal state
   const [showApplyDialog, setShowApplyDialog] = useState(false);
   const [selectedInternship, setSelectedInternship] = useState<any>(null);
-  const [resumeUrl, setResumeUrl] = useState("");
-  const [coverLetter, setCoverLetter] = useState("");
 
   // Fetch internships
   const fetchInternships = useCallback(async () => {
@@ -120,92 +117,6 @@ const StudentDashboard = ({ params }: StudentDashboardProps) => {
     router,
     Id,
   ]);
-
-  const handleUseProfileResume = async () => {
-    // Ensure we have a User ID (passed from props or session hook)
-    // Assuming 'Id' is the variable holding the logged-in user's ID
-    if (!Id) {
-      toast.error("You must be logged in.");
-      return;
-    }
-
-    try {
-      setFetchingResume(true);
-
-      const res = await fetch("/api/auth/profile/get-resume", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: Id }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to fetch resume");
-      }
-
-      // Success! Update state
-      setResumeUrl(data.resumeLink);
-      setIsUsingProfileResume(true);
-      toast.success("Resume attached from profile!");
-    } catch (error: any) {
-      toast.error(error.message);
-    } finally {
-      setFetchingResume(false);
-    }
-  };
-
-  const clearResumeSelection = () => {
-    setResumeUrl("");
-    setIsUsingProfileResume(false);
-  };
-
-  // Apply to internship
-  const applyToInternship = async (
-    internshipId: string,
-    resumeUrl: string,
-    coverLetter: string
-  ) => {
-    if (!Id) {
-      setMessage({ type: "error", text: "You must be logged in to apply." });
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setMessage(null);
-
-      const res = await fetch("/api/auth/applyInternship", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          internshipId,
-          userId: Id,
-          coverLetter,
-          resumeUrl,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        setMessage({ type: "success", text: "Applied successfully!" });
-        setShowApplyDialog(false);
-        setResumeUrl("");
-        setCoverLetter("");
-      } else {
-        setMessage({
-          type: "error",
-          text: data.message || data.error || "Failed to apply.",
-        });
-      }
-    } catch (error) {
-      console.error(error);
-      setMessage({ type: "error", text: "Something went wrong." });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Initial fetch
   useEffect(() => {
@@ -469,243 +380,26 @@ const StudentDashboard = ({ params }: StudentDashboardProps) => {
             )}
             {!loading &&
               internships.map((internship) => (
-                <motion.div
+                <InternshipCard
                   key={internship.id}
-                  whileHover={{ scale: 1.02 }}
-                  className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg p-6 transition-all flex flex-col h-full"
-                >
-                  {/* Header: Title & Company */}
-                  <div className="mb-3">
-                    <h3 className="text-lg font-bold text-gray-900 leading-tight">
-                      {internship.title}
-                    </h3>
-                    <p className="text-gray-500 text-sm font-medium mt-1">
-                      {internship.company?.name || "Unknown Company"}
-                    </p>
-                  </div>
-
-                  {/* Metadata Icons Row */}
-                  <div className="flex flex-wrap gap-x-4 gap-y-2 text-gray-500 text-xs mb-4">
-                    <span className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded border border-gray-100">
-                      <MapPin className="w-3.5 h-3.5" />
-                      {internship.type === "REMOTE"
-                        ? "Remote"
-                        : internship.location}
-                    </span>
-
-                    {internship.durationWeeks && (
-                      <span className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded border border-gray-100">
-                        <Calendar className="w-3.5 h-3.5" />
-                        {internship.durationWeeks} Weeks
-                      </span>
-                    )}
-
-                    <span className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded border border-gray-100">
-                      ₹
-                      {internship.stipend
-                        ? `${internship.stipend.toLocaleString()}`
-                        : "Unpaid"}
-                    </span>
-                  </div>
-
-                  {/* Eligibility Section (Highlighted) */}
-                  {internship.eligibility && (
-                    <div className="mb-3 flex items-start gap-2 text-xs text-amber-800 bg-amber-50 p-2 rounded-lg border border-amber-100">
-                      <GraduationCap className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                      <span className="font-medium line-clamp-2">
-                        {internship.eligibility}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Description Snippet */}
-                  <div className="mb-4 flex-grow">
-                    <p className="text-gray-600 text-sm line-clamp-2">
-                      {internship.description}
-                    </p>
-                  </div>
-
-                  {/* Skills Tags */}
-                  <div className="flex flex-wrap gap-2 mb-5">
-                    {internship.skillsRequired
-                      ?.slice(0, 3)
-                      .map((skill: string, i: any) => (
-                        <span
-                          key={i}
-                          className="text-[10px] font-semibold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-1 rounded-full border border-blue-100"
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                    {internship.skillsRequired?.length > 3 && (
-                      <span className="text-[10px] text-gray-400 py-1 px-1">
-                        +{internship.skillsRequired.length - 3}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Apply Button */}
-                  <button
-                    onClick={() => {
-                      setSelectedInternship(internship);
-                      setShowApplyDialog(true);
-                    }}
-                    className="w-full mt-auto bg-gray-900 text-white py-2.5 rounded-xl font-medium hover:bg-black transition-colors disabled:opacity-50 flex items-center justify-center gap-2 group"
-                    disabled={loading}
-                  >
-                    Apply Now
-                  </button>
-                </motion.div>
+                  internship={internship}
+                  onApplyClick={(data) => {
+                    setSelectedInternship(data);
+                    setShowApplyDialog(true);
+                  }}
+                />
               ))}
           </motion.section>
         </div>
       </main>
 
       {/* Apply Dialog */}
-      <Dialog open={showApplyDialog} onOpenChange={setShowApplyDialog}>
-        <DialogOverlay className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              Apply for {selectedInternship?.title || "this internship"}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="flex flex-col gap-4 mt-2">
-            {/* --- RESUME SECTION --- */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Resume
-              </label>
-
-              {!resumeUrl ? (
-                /* Case 1: No Resume Selected -> Show Options */
-                <div className="flex flex-col gap-3">
-                  {/* Option A: Upload File */}
-                  <FileUpload
-                    onSuccess={(fileUrl) => {
-                      setResumeUrl(fileUrl);
-                      setIsUsingProfileResume(false);
-                      setMessage({
-                        type: "success",
-                        text: "Resume uploaded successfully!",
-                      });
-                    }}
-                    onError={(error) => {
-                      setMessage({ type: "error", text: error });
-                    }}
-                  />
-
-                  {/* Divider */}
-                  <div className="relative flex py-1 items-center">
-                    <div className="flex-grow border-t border-gray-200"></div>
-                    <span className="flex-shrink-0 mx-3 text-[10px] text-gray-400 font-medium uppercase tracking-wider">
-                      Or use existing
-                    </span>
-                    <div className="flex-grow border-t border-gray-200"></div>
-                  </div>
-
-                  {/* Option B: Use Profile Resume */}
-                  <button
-                    type="button"
-                    onClick={handleUseProfileResume}
-                    disabled={fetchingResume}
-                    className="group relative w-full flex items-center justify-center gap-2 py-2.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all active:scale-[0.98] disabled:opacity-70"
-                  >
-                    {fetchingResume ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
-                    ) : (
-                      <User className="w-4 h-4 text-gray-500 group-hover:text-gray-900 transition-colors" />
-                    )}
-                    {fetchingResume
-                      ? "Fetching..."
-                      : "Apply with Profile Resume"}
-                  </button>
-                </div>
-              ) : (
-                /* Case 2: Resume Selected -> Show Selected State */
-                <div className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg animate-in fade-in zoom-in-95 duration-200">
-                  <div className="flex items-center gap-3">
-                    {/* Icon changes based on source */}
-                    <div
-                      className={`p-2 rounded-full ${
-                        isUsingProfileResume
-                          ? "bg-indigo-100 text-indigo-600"
-                          : "bg-emerald-100 text-emerald-600"
-                      }`}
-                    >
-                      {isUsingProfileResume ? (
-                        <User className="w-4 h-4" />
-                      ) : (
-                        <FileText className="w-4 h-4" />
-                      )}
-                    </div>
-
-                    {/* Text Details */}
-                    <div className="flex flex-col">
-                      <span className="text-sm font-semibold text-gray-900">
-                        {isUsingProfileResume
-                          ? "Profile Resume"
-                          : "Uploaded File"}
-                      </span>
-                      <a
-                        href={resumeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-blue-600 hover:text-blue-700 hover:underline font-medium"
-                      >
-                        View Document
-                      </a>
-                    </div>
-                  </div>
-
-                  {/* Clear Selection Button */}
-                  <button
-                    type="button"
-                    onClick={clearResumeSelection}
-                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
-                    title="Remove resume"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* --- COVER LETTER SECTION --- */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Why do you want to join this role?
-              </label>
-              <textarea
-                value={coverLetter}
-                onChange={(e) => setCoverLetter(e.target.value)}
-                placeholder="Share what excites you about this opportunity..."
-                className="border border-gray-300 rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-gray-900 outline-none resize-none"
-                rows={4}
-              />
-            </div>
-          </div>
-
-          <DialogFooter className="flex justify-end gap-3 mt-4">
-            <Button variant="outline" onClick={() => setShowApplyDialog(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() =>
-                applyToInternship(
-                  selectedInternship?.id,
-                  resumeUrl,
-                  coverLetter
-                )
-              }
-              disabled={!resumeUrl || !coverLetter || loading}
-            >
-              {loading ? "Submitting..." : "Submit Application"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ApplyInternshipDialog
+        open={showApplyDialog}
+        onOpenChange={setShowApplyDialog}
+        internship={selectedInternship}
+        userId={Id}
+      />
 
       {/* -------------------- TOP COMPANIES AUTO-SCROLLING SECTION -------------------- */}
       <section className="mt-10 w-full overflow-hidden">

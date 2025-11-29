@@ -58,7 +58,7 @@ const Recruiter_PostInternshipModal = ({ id: recruiterId, onClose }: RecruiterPo
         return;
       }
     } else if (postStep === 2) {
-      if (!internshipForm.description || !internshipForm.responsibilities || !internshipForm.requirements || internshipForm.skills.length === 0) {
+      if (!internshipForm.description  || !internshipForm.requirements || internshipForm.skills.length === 0) {
         alert('Please fill in all *required fields* in Description & Skills before proceeding.');
         return;
       }
@@ -347,14 +347,14 @@ const Recruiter_PostInternshipModal = ({ id: recruiterId, onClose }: RecruiterPo
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"></textarea>
               </div>
-              <div>
+              {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Key Responsibilities *</label>
                 <textarea rows={4} value={internshipForm.responsibilities} 
                   onChange={(e) => setInternshipForm({...internshipForm, responsibilities: e.target.value})}
                   placeholder="List the main responsibilities (one per line)..."
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"></textarea>
-              </div>
+              </div> */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Requirements *</label>
                 <textarea rows={4} value={internshipForm.requirements} 
@@ -460,35 +460,6 @@ const Recruiter_PostInternshipModal = ({ id: recruiterId, onClose }: RecruiterPo
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900" />
                 </div>
               </div>
-              <div>
-                <label className="flex items-center space-x-2 cursor-pointer">
-                  <input type="checkbox" checked={internshipForm.questionsRequired}
-                    onChange={(e) => setInternshipForm({...internshipForm, questionsRequired: e.target.checked, customQuestions: e.target.checked ? internshipForm.customQuestions : []})} // Clear questions if unchecked
-                    className="w-4 h-4" />
-                  <span className="text-sm font-medium text-gray-700">Ask custom questions from applicants (Optional)</span>
-                </label>
-              </div>
-              {internshipForm.questionsRequired && (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium text-gray-700">Custom Questions</label>
-                    <button onClick={addQuestion}
-                      className="text-sm px-3 py-1 bg-gray-900 text-white rounded hover:bg-gray-800">
-                      + Add Question
-                    </button>
-                  </div>
-                  <div className="space-y-2">
-                    {internshipForm.customQuestions.map((question, idx) => (
-                      <div key={idx} className="flex items-center space-x-2 p-2 bg-gray-50 rounded">
-                        <span className="flex-1 text-sm">{idx + 1}. {question}</span>
-                        <button onClick={() => removeQuestion(idx)} className="text-red-600 hover:text-red-700">
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
