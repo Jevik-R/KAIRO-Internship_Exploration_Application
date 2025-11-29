@@ -255,7 +255,7 @@ const Recruiter_PostInternshipModal = ({ id: recruiterId, onClose }: RecruiterPo
                   <option value="SOFTWARE_DEVLOPMENT">Software Development</option>
                   <option value="DESIGN">Design</option>
                   <option value="MARKETING">Marketing</option>
-                  <option value="SALSE">Sales</option>
+                  <option value="SALES">Sales</option>
                   <option value="CONTENT_WRITING">Content Writing</option>
                   <option value="DATA_SCIENCE">Data Science</option>
                   <option value="FINANCE">Finance</option>
@@ -454,6 +454,7 @@ const Recruiter_PostInternshipModal = ({ id: recruiterId, onClose }: RecruiterPo
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Expected Start Date *</label>
                   <input type="date" value={internshipForm.startDate}
+                  min={internshipForm.applicationDeadline}
                     onChange={(e) => setInternshipForm({...internshipForm, startDate: e.target.value})}
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900" />

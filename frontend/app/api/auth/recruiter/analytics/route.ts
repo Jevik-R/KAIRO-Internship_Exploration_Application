@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
 export async function GET() {
-  // Your aggregation code to get monthly stats here
-  const year = new Date().getFullYear(); // or accept as query param
+  
+  const year = new Date().getFullYear(); 
 
   const result = await prisma.$queryRaw`
     SELECT
@@ -19,7 +19,6 @@ export async function GET() {
     ORDER BY MIN("createdAt")
   `;
 
-  // Map for frontend compatibility
   const monthlyStats = result.map((r: any) => ({
     month: r.month,
     applications: Number(r.applications),

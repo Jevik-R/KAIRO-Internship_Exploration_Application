@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
   try {
-    // 1. Get companyId from URL Query Params
     const { searchParams } = new URL(req.url);
     const companyId = searchParams.get("companyId");
 
@@ -11,7 +10,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Company ID is required" }, { status: 400 });
     }
 
-    // 2. Fetch Recruiters from Database
     const recruiters = await prisma.recruiter.findMany({
       where: {
         companyId: companyId,
@@ -20,7 +18,6 @@ export async function GET(req: NextRequest) {
         id: true,
         position: true,
         contactEmail: true,
-        // 3. Join with the User table to get names/images
         user: {
           select: {
             name: true,

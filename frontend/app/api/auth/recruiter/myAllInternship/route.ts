@@ -7,14 +7,12 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const recruiterId = searchParams.get("recruiterId");
 
-    // Validate recruiterId
     if (!recruiterId) {
       return NextResponse.json(
         { error: "Missing recruiterId in query parameters" },
         { status: 400 }
       );
     }
-    // Find the recruiter
     const recruiter = await prisma.recruiter.findUnique({
       where: { userId: recruiterId },
     });
@@ -25,7 +23,6 @@ export async function GET(req: NextRequest) {
         { status: 404 }
       );
     }
-    // Fetch internships
     const internships = await prisma.internship.findMany({
       where: {
         recruiterId: recruiter.id,

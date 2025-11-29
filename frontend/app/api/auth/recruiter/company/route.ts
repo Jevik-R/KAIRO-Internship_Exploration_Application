@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma"; // Make sure this path matches your project structure
+import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
   try {
-    // 1. Get the ID from query parameters safely
     const { searchParams } = new URL(req.url);
     const recruiterId = searchParams.get("id");
 
@@ -14,13 +13,11 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // 2. Find the Recruiter and select specific Company details
     const recruiterData = await prisma.recruiter.findUnique({
       where: {
-        userId: recruiterId, // Assumes you are passing the 'Recruiter' table ID (UUID)
+        userId: recruiterId, 
       },
       select: {
-        // We only select the company relation here
         company: {
           select: {
             id: true,
@@ -36,7 +33,6 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    // 3. Check if the Recruiter exists
     if (!recruiterData) {
       return NextResponse.json(
         { error: "Recruiter not found" },
@@ -44,8 +40,6 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // 4. Check if the Recruiter is actually linked to a Company
-    // In your schema, 'companyId' is optional (String?), so this check is vital.
     if (!recruiterData.company) {
       return NextResponse.json(
         { error: "No company profile associated with this recruiter account" },
@@ -53,7 +47,6 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // 5. Return the Company Data
     return NextResponse.json(recruiterData.company, { status: 200 });
 
   } catch (error) {

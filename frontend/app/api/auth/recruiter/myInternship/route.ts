@@ -1,20 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const recruiterId = searchParams.get("recruiterId");
 
-    // Validate recruiterId
     if (!recruiterId) {
       return NextResponse.json(
         { error: "Missing recruiterId in query parameters" },
         { status: 400 }
       );
     }
-    // Find the recruiter
     const recruiter = await prisma.recruiter.findUnique({
       where: { userId: recruiterId },
     });
@@ -25,13 +22,9 @@ export async function GET(req: NextRequest) {
         { status: 404 }
       );
     }
-    // Fetch internships
     const internships = await prisma.internship.findMany({
       where: {
         recruiterId: recruiter.id,
-        startDate : {
-          lte: new Date()
-        },
         applicationDeadline:{
           gte: new Date()
         },

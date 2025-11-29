@@ -23,21 +23,17 @@ export async function GET(req: Request) {
     }
     const recruiterId = recruiter.id
 
-    // Step 1: Get all internships posted by this recruiter
     const internships = await prisma.internship.findMany({
       where: { recruiterId },
       select: { id: true },
     });
 
-    // If no internships, return empty list
     if (internships.length === 0) {
       return NextResponse.json([], { status: 200 });
     }
 
-    // Convert to array of ids
     const internshipIds = internships.map((i) => i.id);
 
-    // Step 2: Fetch all applications linked to these internship IDs
     const applications = await prisma.internshipApplication.findMany({
       where: {
         internshipId: {

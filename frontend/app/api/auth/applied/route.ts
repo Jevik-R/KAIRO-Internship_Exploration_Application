@@ -1,6 +1,5 @@
-// app/api/student/applied/route.ts
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma"; // Adjust this import based on your project structure
+import { prisma } from "@/lib/prisma"; 
 
 export const dynamic = "force-dynamic";
 
@@ -25,14 +24,14 @@ export async function GET(req: Request) {
           include: {
             company: {
               select: {
-                name: true, // We only need the company name
+                name: true, 
               },
             },
           },
         },
       },
       orderBy: {
-        createdAt: "desc", // Show newest applications first
+        createdAt: "desc", 
       },
     });
 

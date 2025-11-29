@@ -30,7 +30,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'No internships found for this recruiter' }, { status: 404 });
     }
 
-    // Corrected: selectInterview is moved into where clause properly
     const data = await prisma.internshipApplication.findMany({
       where: {
         internshipId: { in: internshipIds },
@@ -97,7 +96,6 @@ export async function PUT(req: NextRequest) {
     if (interviewTime !== undefined)
       updateData.interviewTime = interviewTime || null;
 
-    // 1. Update the application and retrieve necessary data for the email
     const updatedApplication = await prisma.internshipApplication.update({
       where: { id: applicationId },
       data: updateData,
@@ -116,7 +114,6 @@ export async function PUT(req: NextRequest) {
       }
     });
     
-    // --- START: Local Email Sending Logic ---
     
     const applicantEmail = updatedApplication.applicant.email!;
     const applicantName = updatedApplication.applicant.name || 'Applicant';
@@ -126,7 +123,6 @@ export async function PUT(req: NextRequest) {
     const date = updatedApplication.interviewDate;
     const time = updatedApplication.interviewTime;
 
-    // 2. Create the transporter locally
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -135,7 +131,6 @@ export async function PUT(req: NextRequest) {
       },
     });
 
-    // 3. Send the email
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: applicantEmail,
@@ -163,7 +158,6 @@ export async function PUT(req: NextRequest) {
       `,
     });
     
-    // --- END: Local Email Sending Logic ---
 
     return NextResponse.json({
       success: true,
